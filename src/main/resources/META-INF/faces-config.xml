@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<faces-config version="2.3" xmlns="http://xmlns.jcp.org/xml/ns/javaee" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://xmlns.jcp.org/xml/ns/javaee http://xmlns.jcp.org/xml/ns/javaee/web-facesconfig_2_3.xsd">
+
+    <behavior>
+        <behavior-id>autocom</behavior-id>
+        <behavior-class>com.webarity.autocom.AutoCom</behavior-class>
+    </behavior>
+
+    <render-kit>
+        <client-behavior-renderer>
+            <client-behavior-renderer-class>com.webarity.autocom.AutoComRenderer</client-behavior-renderer-class>
+            <client-behavior-renderer-type>AutoComRenderer</client-behavior-renderer-type>
+        </client-behavior-renderer>
+    </render-kit>
+</faces-config>
