@@ -3,3 +3,6 @@ bin
 .project
 .classpath
 target
+build
+.gradle
+.vscode
