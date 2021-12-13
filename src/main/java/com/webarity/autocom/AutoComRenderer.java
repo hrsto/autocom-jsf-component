@@ -34,7 +34,7 @@ public class AutoComRenderer extends ClientBehaviorRenderer {
         AutoCom b = (AutoCom)behavior;
 
         UIInput q = (UIInput)comp;
-        String id = String.format("%s:%s", q.getParent().getId(), q.getId());
+        String id = q.getClientId();
         String incomingVal = ctx.getExternalContext().getRequestParameterMap().get(id);
 
         String searchResult = "[]";
@@ -94,7 +94,7 @@ public class AutoComRenderer extends ClientBehaviorRenderer {
                 bCtx.getComponent().getId());
 
         UIInput q = (UIInput) bCtx.getComponent();
-        String id = String.format("%s:%s", q.getParent().getId(), q.getId());
+        String id = q.getClientId();
         AutoCom b = (AutoCom)behavior;
 
         return String.format("WebarityAutoCom.makeRQ('%s', '%s', '%s');", id, bCtx.getEventName(), b.getCallbackFunc());
@@ -103,7 +103,7 @@ public class AutoComRenderer extends ClientBehaviorRenderer {
     private String constructSearchResult(Stream<String> str, String searchVal, Integer maxResults) {
         JsonArrayBuilder  searchResults = Json.createArrayBuilder();
         str.map(entry -> entry.trim().toLowerCase())
-        .filter(entry -> entry.contains(searchVal.trim().toLowerCase()))
+        .filter(entry -> entry.contains(searchVal == null ? "" : searchVal.trim().toLowerCase()))
         .sorted()
         .limit(maxResults)
         .forEach(entry -> searchResults.add(entry));
