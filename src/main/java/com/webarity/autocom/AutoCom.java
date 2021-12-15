@@ -5,8 +5,8 @@ import javax.faces.component.behavior.ClientBehaviorBase;
 public class AutoCom extends ClientBehaviorBase {
 
     private final static String DEFAULT_DELIMITER = " "; 
-    private final static String DEFAULT_CALLBACKFUNC = "WebarityAutoCom.defaultCallbackFunc"; 
-    private final static Integer DEFAULT_MAXRESUTLS = 50; 
+    private final static String DEFAULT_CALLBACK_FUNC = "WebarityAutoCom.defaultCallbackFunc"; 
+    private final static Integer DEFAULT_MAX_RESULTS = 50; 
 
     private Object source;
     private String delimiter;
@@ -17,8 +17,8 @@ public class AutoCom extends ClientBehaviorBase {
         return source;
     }
     public String getCallbackFunc() {
-        if (callbackFunc == null) return DEFAULT_CALLBACKFUNC;
-        if (callbackFunc.isEmpty()) return DEFAULT_CALLBACKFUNC;
+        if (callbackFunc == null) return DEFAULT_CALLBACK_FUNC;
+        if (callbackFunc.isEmpty()) return DEFAULT_CALLBACK_FUNC;
         return callbackFunc;
     }
     public void setCallbackFunc(String callbackFunc) { this.callbackFunc = callbackFunc; }
@@ -28,15 +28,13 @@ public class AutoCom extends ClientBehaviorBase {
     }
 
     public Integer getMaxResults() {
-        if (maxResults == null) return DEFAULT_MAXRESUTLS;
-        if (maxResults < 0) return DEFAULT_MAXRESUTLS;
-        return DEFAULT_MAXRESUTLS;
+        if (maxResults == null || maxResults < 0) return DEFAULT_MAX_RESULTS;
+        return maxResults;
     }
     public void setMaxResults(Integer maxResults) { this.maxResults = maxResults; }
 
     public String getDelimiter() {
-        if (delimiter == null) return DEFAULT_DELIMITER;
-        if (delimiter.isEmpty()) return DEFAULT_DELIMITER;
+        if (delimiter == null || delimiter.isEmpty()) return DEFAULT_DELIMITER;
         return delimiter;
     }
     public void setDelimiter(String delimiter) { this.delimiter = delimiter; }

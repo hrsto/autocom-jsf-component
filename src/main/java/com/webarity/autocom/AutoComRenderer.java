@@ -4,10 +4,13 @@ import static javax.faces.application.ResourceHandler.JSF_SCRIPT_LIBRARY_NAME;
 import static javax.faces.application.ResourceHandler.JSF_SCRIPT_RESOURCE_NAME;
 
 import java.io.IOException;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Set;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import javax.faces.application.ResourceDependencies;
@@ -20,6 +23,7 @@ import javax.faces.context.FacesContext;
 import javax.faces.context.PartialResponseWriter;
 import javax.faces.render.ClientBehaviorRenderer;
 import javax.json.Json;
+import javax.json.JsonArray;
 import javax.json.JsonArrayBuilder;
 
 @ResourceDependencies({
@@ -31,54 +35,53 @@ public class AutoComRenderer extends ClientBehaviorRenderer {
     @Override
     public void decode(FacesContext ctx, UIComponent comp, ClientBehavior behavior) {
         if (!(behavior instanceof AutoCom)) return;
-        AutoCom b = (AutoCom)behavior;
+        AutoCom autoComBehavior = (AutoCom) behavior;
 
-        UIInput q = (UIInput)comp;
-        String id = q.getClientId();
-        String incomingVal = ctx.getExternalContext().getRequestParameterMap().get(id);
+        UIInput affectedInput = (UIInput) comp;
+        String id = affectedInput.getClientId();
+        String incomingVal = sanitize(ctx.getExternalContext().getRequestParameterMap().get(id));
 
-        String searchResult = "[]";
-        int totalEntries = 0;
+        JsonArray searchResult = null;
 
-        if (b.getSource() instanceof String) {
-            String[] tempVals = ((String)b.getSource()).split(b.getDelimiter());
-            totalEntries = tempVals.length;
-            searchResult = constructSearchResult(Stream.of(tempVals), incomingVal, b.getMaxResults());
-        } else if (b.getSource() instanceof Map) {
-            @SuppressWarnings("unchecked") Map<String, ?> tempVals = (Map<String, ?>)b.getSource();
-            totalEntries = tempVals.size();
-            searchResult = constructSearchResult(tempVals.keySet().stream(), incomingVal, b.getMaxResults());
-        } else if (b.getSource() instanceof List) {
-            @SuppressWarnings("unchecked") List<String> tempVals = (List<String>)b.getSource();
-            totalEntries = tempVals.size();
-            searchResult = constructSearchResult(tempVals.stream(), incomingVal, b.getMaxResults());
-        } else if (b.getSource() instanceof Set) {
-            @SuppressWarnings("unchecked") Set<String> tempVals = (Set<String>)b.getSource();
-            totalEntries = tempVals.size();
-            searchResult = constructSearchResult(tempVals.stream(), incomingVal, b.getMaxResults());
-        } else if (b.getSource() instanceof String[]) {
-            String[] tempVals = (String[])b.getSource();
-            totalEntries = tempVals.length;
-            searchResult = constructSearchResult(Stream.of(tempVals), incomingVal, b.getMaxResults());
-        } else {
-            totalEntries = -1;
+        if (autoComBehavior.getSource() instanceof String stringSource) {
+            String[] tempVals = stringSource.split(autoComBehavior.getDelimiter());
+            searchResult = constructSearchResult(Stream.of(tempVals), incomingVal, autoComBehavior.getMaxResults());
+        } else if (autoComBehavior.getSource() instanceof Map<?, ?> mapSource) {
+            Map<String, String> tempVals = mapSource.entrySet().stream()
+                .filter(entry -> entry.getKey() instanceof String && entry.getValue() instanceof String)
+                .collect(Collectors.toMap(key -> (String) key.getKey(), val -> (String) val.getValue()));
+            searchResult = constructMappedSearchResult(tempVals.entrySet().stream(), incomingVal, autoComBehavior.getMaxResults());
+        } else if (autoComBehavior.getSource() instanceof List<?> listSource) {
+            List<String> tempVals = listSource.stream()
+                .filter(item -> item instanceof String)
+                .map(item -> (String) item)
+                .collect(Collectors.toList());
+            searchResult = constructSearchResult(tempVals.stream(), incomingVal, autoComBehavior.getMaxResults());
+        } else if (autoComBehavior.getSource() instanceof Set<?> setSource) {
+            Set<String> tempVals = setSource.stream()
+                .filter(item -> item instanceof String)
+                .map(item -> (String) item)
+                .collect(Collectors.toSet());
+            searchResult = constructSearchResult(tempVals.stream(), incomingVal, autoComBehavior.getMaxResults());
+        } else if (autoComBehavior.getSource() instanceof String[] arraySource) {
+            searchResult = constructSearchResult(Stream.of(arraySource), incomingVal, autoComBehavior.getMaxResults());
         }
 
         HashMap<String, String> extAttrs = new HashMap<>();
         extAttrs.put("for", id);
-        extAttrs.put("parent", q.getParent().getId());
-        extAttrs.put("totalEntries", Integer.toString(totalEntries));
+        extAttrs.put("parent", affectedInput.getParent().getId());
+        extAttrs.put("totalEntries", searchResult == null ? "-1" : Integer.toString(searchResult.size()));
 
         try (
             PartialResponseWriter prw = ctx.getPartialViewContext().getPartialResponseWriter();
         ) {
             prw.startDocument();
             prw.startExtension(extAttrs);
-            prw.write(searchResult);
+            prw.write(searchResult == null ? null : searchResult.toString());
             prw.endExtension();
             prw.startEval();
-            if (totalEntries == -1) {
-                prw.write("console.error('From server: Supported type for suggestion values are: Map (its keys), List, Set, String[], String of values delimited some delimiter.');");
+            if (searchResult == null) {
+                prw.write("console.error('From server: Supported type for suggestion values are: Map (keys and values), List, Set, String[], String of values delimited some by delimiter.');");
             }
             prw.endEval();
             prw.endDocument();
@@ -100,13 +103,33 @@ public class AutoComRenderer extends ClientBehaviorRenderer {
         return String.format("WebarityAutoCom.makeRQ('%s', '%s', '%s');", id, bCtx.getEventName(), b.getCallbackFunc());
     }
     
-    private String constructSearchResult(Stream<String> str, String searchVal, Integer maxResults) {
+    private JsonArray constructSearchResult(Stream<String> str, String searchVal, Integer maxResults) {
         JsonArrayBuilder  searchResults = Json.createArrayBuilder();
-        str.map(entry -> entry.trim().toLowerCase())
-        .filter(entry -> entry.contains(searchVal == null ? "" : searchVal.trim().toLowerCase()))
-        .sorted()
+
+        str.map(entry -> sanitize(entry.trim()))
+        .filter(entry -> entry.toLowerCase().contains(searchVal == null ? "" : searchVal.trim().toLowerCase()))
+        .sorted(Comparator.comparing(String::toLowerCase))
         .limit(maxResults)
         .forEach(entry -> searchResults.add(entry));
-        return searchResults.build().toString();
+        return searchResults.build().asJsonArray();
+    }
+    
+    private JsonArray constructMappedSearchResult(Stream<Entry<String, String>> str, String searchVal, Integer maxResults) {
+        JsonArrayBuilder  searchResults = Json.createArrayBuilder();
+
+        str.map(entry -> Map.entry(sanitize(entry.getKey().trim()), sanitize(entry.getValue().trim())))
+        .filter(entry -> entry.getValue().toLowerCase().contains(searchVal == null ? "" : searchVal.trim().toLowerCase()))
+        .sorted(Comparator.comparing(key -> key.getValue().toLowerCase()))
+        .limit(maxResults)
+        .forEach(entry -> searchResults.add(Json.createObjectBuilder().add(entry.getKey(), entry.getValue())));
+        return searchResults.build().asJsonArray();
+    }
+
+    private String sanitize(String rawText) {
+        return rawText.replaceAll("&", "&amp;")
+            .replaceAll("<", "&lt;")
+            .replaceAll(">", "&gt;")
+            .replaceAll("\"", "&quot;")
+            .replaceAll("'", "&apos;");
     }
 }

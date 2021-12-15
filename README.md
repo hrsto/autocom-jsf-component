@@ -7,7 +7,7 @@ Lightweight Autocomplete jsf component implemented as a jsf behavior. Can be att
 * Lightweight
 * Unopinionated - it just hands you the results as a JSON array and some metadata, and leaves the rest to you.
 * Supports:
-  * `java.util.Map<String, ?>` - search is based on the keys of the `Map`
+  * `java.util.Map<String, String>` - search is based on the values of the `Map`
   * `java.util.List<String>`
   * `java.util.Set<String>`
   * `java.lang.String[]`
@@ -55,7 +55,7 @@ Another ex:
 function someFunction(for, parent, results, length) {
     console.log(for); //id of DOM element that the behavior is attached to. I.e. the <input /> element
     console.log(parent); //id of its parent as in terms of the .xhtml facelets page source - most probably the <form ...> element
-    console.log(results); //an array of the results as strings
+    console.log(results); //an array of the results as strings, if map was supplied, then it's an array of objects
     console.log(length); //the total size of the collection as it's on the server, before being limited by the maxResult attribute of the tag
 
     //do logic to render some UI element to display those result and enable user to select them; anyway you wish.
@@ -64,7 +64,7 @@ function someFunction(for, parent, results, length) {
 
 ### All attributes
 
-* source - `java.util.Map<String, ?>`, `java.util.List<String>`, `java.util.Set<String>`, `java.lang.String[]`, `java.lang.String`
+* source - `java.util.Map<String, String>`, `java.util.List<String>`, `java.util.Set<String>`, `java.lang.String[]`, `java.lang.String`
 * callbackFunc - `java.lang.String` of the JavaScript function to call
 * maxResults - `java.lang.Integer` to limit how many results are returned. Defaults to `50`. Note: the `length` argument that is returned and available in the JavaScript callback is for the size of the collection before being limited to `maxResults`.
 * delimiter - `java.lang.String` - a java regular expression. Defaults to `" "` (a single white space).
@@ -75,7 +75,7 @@ function someFunction(for, parent, results, length) {
 ## Prerequisites
 
 * Java/Jakarta EE8
-* JDK >= 10
+* JDK >= 16
 * Maven >= 3.5.x or Gradle 6
 
 ## Running
